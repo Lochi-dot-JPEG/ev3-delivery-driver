@@ -6,6 +6,7 @@ from pybricks.parameters import Port, Stop, Direction, Button, Color
 from pybricks.tools import wait, StopWatch, DataLog
 from pybricks.robotics import DriveBase
 from pybricks.media.ev3dev import SoundFile, ImageFile
+from pybricks.iodevices import XboxController
 
 
 # This program requires LEGO EV3 MicroPython v2.0 or higher.
@@ -38,6 +39,7 @@ collision_sensor = UltrasonicSensor(Port.S4)
 # Large motors can go up to 1050 degrees/second
 DROP_SPEED = 500
 MOVE_SPEED = 400
+CONTROLLER_MOVE_SPEED = 200
 SORT_SPEED = 1000
 LAGGING_LINE_FOLLOW_SPEED = 200
 TURN_SPEED = 300
@@ -49,6 +51,10 @@ GROUND_COLOUR = Color.WHITE
 
 # Write your program here.
 ev3.speaker.beep()
+
+# Connect to xbox controller
+controller = XboxController()
+
 
 def DropItem():
     drop_motor.run_angle(DROP_SPEED,360)
@@ -143,8 +149,36 @@ def LineFollow():
                 Turn(120)
                 break
         wait(500)
+        
+def ManualControlEv3():
+    drop_held = False
+    while (Button.B not in controller.buttons.pressed):
+        pressed_buttons = controller.buttons.pressed
+        trigger_percentages = controller.triggers()
+        trigger_percentages[1]
+
+        # If right trigger pressed
+        if trigger_percentages[1] > 10:
+            accel = trigger_percentages[1]
+            dir = controller.joystick_left()[0]
+            move_motor_l.run(CONTROLLER_MOVE_SPEED * accel * (dir))
+            move_motor_r.run(CONTROLLER_MOVE_SPEED * accel * (-dir))
+        else:
+            move_motor_l.hold()
+            move_motor_r.hold()
+            
+        if Button.A in controller.buttons.pressed and not drop_held:
+            DropItem()
+        
+        wait(15) # Wait 15ms between polling input
+
+
 
 ev3.speaker.set_volume
 while True:
-    if Button.CENTER in ev3.buttons.pressed():
-        LineFollow()
+    print(ev3.buttons.pressed())
+    wait(100)
+    #if Button.LEFT in ev3.buttons.pressed().__contains__:
+        #LineFollow()
+    #if Button.RIGHT in ev3.buttons.pressed():
+        #SortItems()

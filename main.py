@@ -51,7 +51,9 @@ GROUND_COLOUR = Color.WHITE
 ev3.speaker.beep()
 
 def DropItem():
-    drop_motor.run_angle(DROP_SPEED,360)
+    drop_motor.run_until_stalled(500,Stop.COAST, 30)
+    wait(100)
+    drop_motor.run_angle(500,-180)
 
 def SortItems():
     while stack_color_sensor != Color.BLACK:
@@ -75,17 +77,28 @@ def SortItems():
         # Wait between loops to allow items to fall
         wait(500)
 
+def IsBlockColor(col : Color) -> bool:
+    return ((col == Color.RED) OR (col == Color.GREEN) OR (col == Color.BLUE) OR (col == Color.YELLOW))
+
 
 def ColorToName(col : Color) -> str:
-    match col:
-        case Color.RED:
-            return "Red"
-        case Color.GREEN:
-            return "Green"
-        case Color.BLUE:
-            return "Blue"
-        case Color.YELLOW:
-            return "Yellow"
+    if col == Color.RED:
+        return "Red"
+    if col == Color.GREEN:
+        return "Green"
+    if col == Color.BLUE:
+        return "Blue"
+    if col == Color.YELLOW:
+        return "Yellow"
+    if col == Color.BROWN:
+        return "Brown"
+    if col == Color.BLACK:
+        return "Black"
+    if col == Color.WHITE:
+        return "White"
+
+    ev3.speaker.say(col.RED)
+    return "An error"
 
 
 def Turn(angle : int):
@@ -93,10 +106,12 @@ def Turn(angle : int):
     move_motor_r.run_angle(-TURN_SPEED, angle)
 
 def LineFollow():
-    while stack_color_sensor != Color.BLACK:
+    while IsBlockColor(stack_color_sensor.color):
         searching_color = stack_color_sensor.color
 
+        ev3.speaker.say(ColorToName(searching_color))
         ev3.speaker.say("Delivery for the " + ColorToName(searching_color) + " house.")
+        ev3.speaker.say(ColorToName(searching_color))
         going_left = True
         while True:
             if going_left:
@@ -114,20 +129,25 @@ def LineFollow():
                 
             # Detect letterboxes
             if collision_sensor.distance() < 100:
-                ev3.speaker.say("Found a letterbox")
+                move_motor_l.stop()
+                move_motor_r.stop()
+                ev3.speaker.say("Found a house")
                 Turn(-90)
+                move_motor_l.run_angle(MOVE_SPEED,0.5)
+                move_motor_r.run_angle(MOVE_SPEED,0.5)
                 found_color = line_color_sensor.color
                 ev3.speaker.say("This house is " + found_color)
                 if searching_color == found_color:
                     ev3.speaker.say("I was looking for this one")
                     Turn(90)
                     DropItem()
-                    Turn(10)
+                    Turn(-90)
                     break
-                    
 
-                while collision_sensor.distance() < 110:
-                    wait(100)
+                # Reverse out of house
+                move_motor_l.run_angle(MOVE_SPEED,-0.8) 
+                move_motor_r.run_angle(MOVE_SPEED,-0.8)
+                    
 
             # Check if there is anything in the 10cm in front of the vehicle and stop
             #if collision_sensor.distance() < 100:
@@ -136,15 +156,23 @@ def LineFollow():
                     #wait(100)
                 
 
-            if line_color_sensor.color == searching_color:
-                Turn(-90)
-                DropItem()
-                ev3.speaker.say("Your delivery is here")
-                Turn(120)
-                break
-        wait(500)
+            #if line_color_sensor.color == searching_color:
+                #Turn(-90)
+                #DropItem()
+                #ev3.speaker.say("Your delivery is here")
+                #Turn(120)
+                #break
 
-ev3.speaker.set_volume
+        # Wait 200ms between deliveries to allow time for error
+        wait(200)
+    ev3.speaker.say("My deliveries are done.")
+
+ev3.speaker.set_volume(100)
+ev3.speaker.set_speech_options('en','f1',70,50)
+
 while True:
-    if Button.CENTER in ev3.buttons.pressed():
+    print(ev3.buttons.pressed())
+    if Button.LEFT in ev3.buttons.pressed():
         LineFollow()
+    #if Button.RIGHT in ev3.buttons.pressed():
+        #SortItems()

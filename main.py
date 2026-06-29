@@ -84,7 +84,15 @@ def SortItems():
         wait(500)
 
 def IsBlockColor(col : Color) -> bool:
-    return ((col == Color.RED) OR (col == Color.GREEN) OR (col == Color.BLUE) OR (col == Color.YELLOW))
+    if (col == Color.RED):
+        return True
+    if (col == Color.GREEN):
+        return True
+    if (col == Color.YELLOW):
+        return True
+    if (col == Color.BLUE):
+        return True
+    return False 
 
 
 def ColorToName(col : Color) -> str:
@@ -196,7 +204,7 @@ def ManualControlEv3():
             move_motor_l.hold()
             move_motor_r.hold()
             
-        if Button.A in controller.buttons.pressed and not drop_held:
+        if Button.A in pressed_buttons and not drop_held:
             DropItem()
         
         wait(15) # Wait 15ms between polling input
@@ -210,5 +218,6 @@ while True:
     print(ev3.buttons.pressed())
     if Button.LEFT in ev3.buttons.pressed():
         LineFollow()
-    #if Button.RIGHT in ev3.buttons.pressed():
-        #SortItems()
+    if Button.RIGHT in ev3.buttons.pressed():
+        ManualControlEv3()
+    wait(80)

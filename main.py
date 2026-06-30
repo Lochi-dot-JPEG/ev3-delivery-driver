@@ -39,7 +39,7 @@ DROP_SPEED = 500
 MOVE_SPEED = 400
 CONTROLLER_MOVE_SPEED = 200
 SORT_SPEED = 1000
-LAGGING_LINE_FOLLOW_SPEED = 200
+LAGGING_LINE_FOLLOW_SPEED = 100
 TURN_SPEED = 300
 LINE_FOLLOW_SPEED = 300
 
@@ -57,9 +57,6 @@ ev3.speaker.beep()
 def DropItem():
     drop_motor.run_angle(1500, 180)
     drop_motor.run_angle(1500, -180)
-    #drop_motor.run_until_stalled(500,Stop.COAST, 80)
-    #wait(100)
-    #drop_motor.run_angle(500,-180)
 
 
 def SortItems():
@@ -116,8 +113,8 @@ def ColorToName(col : Color) -> str:
 
 
 def Turn(angle : int):
-    move_motor_l.run_angle(TURN_SPEED, angle*4)
-    move_motor_r.run_angle(-TURN_SPEED, angle*4)
+    move_motor_l.run_angle(TURN_SPEED, angle*2)
+    move_motor_r.run_angle(-TURN_SPEED, angle*2)
 
 
 def LineFollow():
@@ -130,66 +127,21 @@ def LineFollow():
         going_left = True
         last_going = False
         while True:
-#            if last_going != going_left:
-#                move_motor_l.stop()
-#                move_motor_r.stop()
-#                
-#                if going_left:
-#                    move_motor_l.run(LAGGING_LINE_FOLLOW_SPEED)
-#                    move_motor_r.run(LINE_FOLLOW_SPEED)
-#                else:
-#                    move_motor_l.run(LINE_FOLLOW_SPEED)
-#                    move_motor_r.run(LAGGING_LINE_FOLLOW_SPEED)
-#                last_going = going_left
-
-            if line_color_sensor.color() == LINE_COLOUR:
+            reflection = line_color_sensor.reflection
+            print(reflection)
+            if (reflection > 50): # if the ground is bright go right
+                move_motor_l.run(LINE_FOLLOW_SPEED) # Left forward
                 move_motor_r.run(LAGGING_LINE_FOLLOW_SPEED)
-                move_motor_l.run(LINE_FOLLOW_SPEED)
-            elif line_color_sensor.color() == GROUND_COLOUR:
-                move_motor_l.run(LAGGING_LINE_FOLLOW_SPEED)
+            else:
+                move_motor_l.run(LAGGING_LINE_FOLLOW_SPEED) # Right forward
                 move_motor_r.run(LINE_FOLLOW_SPEED)
-            if line_color_sensor.color() == searching_color:
-                Turn(-180)
-                DropItem()
+
+            floor_colour = line_color_sensor.color()
+            if floor_colour == searching_color:
                 ev3.speaker.say("Your delivery is here")
-                Turn(190)
+                DropItem()
                 break
             wait(20)
-                
-            # Detect letterboxes
-            #if collision_sensor.distance() < 100:
-            #    move_motor_l.stop()
-            #    move_motor_r.stop()
-            #    ev3.speaker.say("Something is in the way")
-#                found_color = line_color_sensor.color()
-#                if searching_color == found_color:
-#                    ev3.speaker.say("I found the " + found_color + " house")
-#                    Turn(-90)
-#                    move_motor_l.run_angle(MOVE_SPEED,0.5)
-#                    move_motor_r.run_angle(MOVE_SPEED,0.5)
-#                    Turn(90)
-#                    DropItem()
-#                    Turn(-90)
-#                    break
-#
-#                # Reverse out of house
-#                move_motor_l.run_angle(MOVE_SPEED,-0.8) 
-#                move_motor_r.run_angle(MOVE_SPEED,-0.8)
-#                    
-
-            # Check if there is anything in the 10cm in front of the vehicle and stop
-            #if collision_sensor.distance() < 100:
-                #ev3.speaker.say("Something is in the way!")
-                #while collision_sensor.distance() < 110:
-                    #wait(100)
-                
-
-            #if line_color_sensor.color == searching_color:
-                #Turn(-90)
-                #DropItem()
-                #ev3.speaker.say("Your delivery is here")
-                #Turn(120)
-                #break
 
         # Wait 200ms between deliveries to allow time for error
         wait(200)

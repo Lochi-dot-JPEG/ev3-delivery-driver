@@ -43,6 +43,10 @@ LAGGING_LINE_FOLLOW_SPEED = 100
 TURN_SPEED = 300
 LINE_FOLLOW_SPEED = 300
 
+BLACK = 9
+WHITE = 85
+LINE_THRESHOLD = (BLACK + WHITE) / 2
+
 # Define colors
 LINE_COLOUR = Color.BLACK
 GROUND_COLOUR = Color.WHITE
@@ -57,29 +61,6 @@ ev3.speaker.beep()
 def DropItem():
     drop_motor.run_angle(1500, 180)
     drop_motor.run_angle(1500, -180)
-
-
-def SortItems():
-    while stack_color_sensor != Color.BLACK:
-        searching_color = stack_color_sensor.color
-
-        ev3.speaker.say("Finding " + ColorToName(searching_color) + " box")
-        move_sorter_motor.run(SORT_SPEED)
-
-        while True:
-            if line_color_sensor.color == searching_color:
-                break
-        move_sorter_motor.hold()
-        DropItem()
-
-        # Return to start
-        move_sorter_motor.run(-SORT_SPEED)
-        #while not return_button.pressed:
-            #wait(10)
-        move_sorter_motor.stop()
-
-        # Wait between loops to allow items to fall
-        wait(500)
 
 
 def IsBlockColor(col : Color) -> bool:
@@ -120,34 +101,36 @@ def Turn(angle : int):
 def LineFollow():
     while IsBlockColor(stack_color_sensor.color()):
         searching_color = stack_color_sensor.color()
-
-        #ev3.speaker.say(ColorToName(searching_color))
         ev3.speaker.say("Delivery for the " + ColorToName(searching_color) + " house.")
         ev3.speaker.say(ColorToName(searching_color))
         going_left = True
         last_going = False
+        loop_wait = 20
         while True:
-            reflection = line_color_sensor.reflection
-            print(reflection)
-            if (reflection > 50): # if the ground is bright go right
-                move_motor_l.run(LINE_FOLLOW_SPEED) # Left forward
-                move_motor_r.run(LAGGING_LINE_FOLLOW_SPEED)
+            reflection = line_color_sensor.reflection()
+            if (reflection > LINE_THRESHOLD): # if the ground is bright go right
+                move_motor_l.run_time(LINE_FOLLOW_SPEED,loop_wait) # Left forward
+                move_motor_r.run_time(LAGGING_LINE_FOLLOW_SPEED,loop_wait)
             else:
-                move_motor_l.run(LAGGING_LINE_FOLLOW_SPEED) # Right forward
-                move_motor_r.run(LINE_FOLLOW_SPEED)
+                move_motor_l.run_time(LAGGING_LINE_FOLLOW_SPEED, loop_wait) # Right forward
+                move_motor_r.run_time(LINE_FOLLOW_SPEED, loop_wait)
 
             floor_colour = line_color_sensor.color()
             if floor_colour == searching_color:
                 ev3.speaker.say("Your delivery is here")
-                DropItem()
+                while floor_colour == searching_color:
+                    DropItem()
+                    wait(100)
+                    searching_color = stack_color_sensor.color() # Drop off multiple parcels if they are there
                 break
-            wait(20)
+            wait(loop_wait)
 
         # Wait 200ms between deliveries to allow time for error
         wait(200)
     ev3.speaker.say("My deliveries are done.")
         
 def ManualControlEv3():
+    pass # Could not get the controller to work
 #    drop_held = False
 #    while (Button.B not in controller.buttons.pressed):
 #        pressed_buttons = controller.buttons.pressed
@@ -167,7 +150,7 @@ def ManualControlEv3():
 #        if Button.A in pressed_buttons and not drop_held:
 #            DropItem()
 #        
-        wait(15) # Wait 15ms between polling input
+        #wait(15) # Wait 15ms between polling input
 
 
 
@@ -178,9 +161,19 @@ def ScanInStoredBricks():
     while not (Button.CENTER in ev3.buttons.pressed()):
         if (IsBlockColor(stack_color_sensor.color())):
             stored_bricks.append(stack_color_sensor.color())
+            ev3.speaker.beep()
             wait(1000)
             while (stack_color_sensor.color() != Color.BLACK):
                 wait(100)
+
+
+def ScanReflection():
+    while True:
+        reflection = line_color_sensor.reflection()
+        print(reflection)
+        if Button.UP in ev3.buttons.pressed():
+            break
+
 
 while True:
     if Button.LEFT in ev3.buttons.pressed():
@@ -189,4 +182,6 @@ while True:
         ManualControlEv3()
     if Button.DOWN in ev3.buttons.pressed():
         DropItem()
+    if Button.UP in ev3.buttons.pressed():
+        ScanReflection()
     wait(80)

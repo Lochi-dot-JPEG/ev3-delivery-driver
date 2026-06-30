@@ -6,7 +6,7 @@ from pybricks.parameters import Port, Stop, Direction, Button, Color
 from pybricks.tools import wait, StopWatch, DataLog
 from pybricks.robotics import DriveBase
 from pybricks.media.ev3dev import SoundFile, ImageFile
-from pybricks.iodevices import XboxController
+#from pybricks.iodevices import XboxController
 
 
 
@@ -23,8 +23,10 @@ drop_motor = Motor(Port.D)
 # Sensors
 stack_color_sensor = ColorSensor(Port.S1)
 line_color_sensor = ColorSensor(Port.S2)
-return_button = TouchSensor(Port.S3)
+#return_button = TouchSensor(Port.S3)
 collision_sensor = UltrasonicSensor(Port.S4)
+
+stored_bricks = []
 
 # --------------------
 # - Define Constants -
@@ -42,20 +44,22 @@ TURN_SPEED = 300
 LINE_FOLLOW_SPEED = 300
 
 # Define colors
-LINE_COLOUR = Color.BLUE
+LINE_COLOUR = Color.BLACK
 GROUND_COLOUR = Color.WHITE
 
 # Beep to indicate the the project started
 ev3.speaker.beep()
 
 # Connect to xbox controller
-controller = XboxController()
+#controller = XboxController()
 
 
 def DropItem():
-    drop_motor.run_until_stalled(500,Stop.COAST, 30)
-    wait(100)
-    drop_motor.run_angle(500,-180)
+    drop_motor.run_angle(1500, 180)
+    drop_motor.run_angle(1500, -180)
+    #drop_motor.run_until_stalled(500,Stop.COAST, 80)
+    #wait(100)
+    #drop_motor.run_angle(500,-180)
 
 
 def SortItems():
@@ -73,8 +77,8 @@ def SortItems():
 
         # Return to start
         move_sorter_motor.run(-SORT_SPEED)
-        while not return_button.pressed:
-            wait(10)
+        #while not return_button.pressed:
+            #wait(10)
         move_sorter_motor.stop()
 
         # Wait between loops to allow items to fall
@@ -112,53 +116,66 @@ def ColorToName(col : Color) -> str:
 
 
 def Turn(angle : int):
-    move_motor_l.run_angle(TURN_SPEED, angle)
-    move_motor_r.run_angle(-TURN_SPEED, angle)
+    move_motor_l.run_angle(TURN_SPEED, angle*4)
+    move_motor_r.run_angle(-TURN_SPEED, angle*4)
 
 
 def LineFollow():
-    while IsBlockColor(stack_color_sensor.color):
-        searching_color = stack_color_sensor.color
+    while IsBlockColor(stack_color_sensor.color()):
+        searching_color = stack_color_sensor.color()
 
-        ev3.speaker.say(ColorToName(searching_color))
+        #ev3.speaker.say(ColorToName(searching_color))
         ev3.speaker.say("Delivery for the " + ColorToName(searching_color) + " house.")
         ev3.speaker.say(ColorToName(searching_color))
         going_left = True
+        last_going = False
         while True:
-            if going_left:
+#            if last_going != going_left:
+#                move_motor_l.stop()
+#                move_motor_r.stop()
+#                
+#                if going_left:
+#                    move_motor_l.run(LAGGING_LINE_FOLLOW_SPEED)
+#                    move_motor_r.run(LINE_FOLLOW_SPEED)
+#                else:
+#                    move_motor_l.run(LINE_FOLLOW_SPEED)
+#                    move_motor_r.run(LAGGING_LINE_FOLLOW_SPEED)
+#                last_going = going_left
+
+            if line_color_sensor.color() == LINE_COLOUR:
+                move_motor_r.run(LAGGING_LINE_FOLLOW_SPEED)
+                move_motor_l.run(LINE_FOLLOW_SPEED)
+            elif line_color_sensor.color() == GROUND_COLOUR:
                 move_motor_l.run(LAGGING_LINE_FOLLOW_SPEED)
                 move_motor_r.run(LINE_FOLLOW_SPEED)
-            else:
-                move_motor_l.run(LINE_FOLLOW_SPEED)
-                move_motor_r.run(LAGGING_LINE_FOLLOW_SPEED)
-
-            if line_color_sensor.color == LINE_COLOUR:
-                going_left = False
-            elif line_color_sensor.color == GROUND_COLOUR:
-                going_left = True
-                
+            if line_color_sensor.color() == searching_color:
+                Turn(-180)
+                DropItem()
+                ev3.speaker.say("Your delivery is here")
+                Turn(190)
+                break
+            wait(20)
                 
             # Detect letterboxes
-            if collision_sensor.distance() < 100:
-                move_motor_l.stop()
-                move_motor_r.stop()
-                ev3.speaker.say("Found a house")
-                Turn(-90)
-                move_motor_l.run_angle(MOVE_SPEED,0.5)
-                move_motor_r.run_angle(MOVE_SPEED,0.5)
-                found_color = line_color_sensor.color
-                ev3.speaker.say("This house is " + found_color)
-                if searching_color == found_color:
-                    ev3.speaker.say("I was looking for this one")
-                    Turn(90)
-                    DropItem()
-                    Turn(-90)
-                    break
-
-                # Reverse out of house
-                move_motor_l.run_angle(MOVE_SPEED,-0.8) 
-                move_motor_r.run_angle(MOVE_SPEED,-0.8)
-                    
+            #if collision_sensor.distance() < 100:
+            #    move_motor_l.stop()
+            #    move_motor_r.stop()
+            #    ev3.speaker.say("Something is in the way")
+#                found_color = line_color_sensor.color()
+#                if searching_color == found_color:
+#                    ev3.speaker.say("I found the " + found_color + " house")
+#                    Turn(-90)
+#                    move_motor_l.run_angle(MOVE_SPEED,0.5)
+#                    move_motor_r.run_angle(MOVE_SPEED,0.5)
+#                    Turn(90)
+#                    DropItem()
+#                    Turn(-90)
+#                    break
+#
+#                # Reverse out of house
+#                move_motor_l.run_angle(MOVE_SPEED,-0.8) 
+#                move_motor_r.run_angle(MOVE_SPEED,-0.8)
+#                    
 
             # Check if there is anything in the 10cm in front of the vehicle and stop
             #if collision_sensor.distance() < 100:
@@ -167,12 +184,6 @@ def LineFollow():
                     #wait(100)
                 
 
-            if line_color_sensor.color == searching_color:
-                Turn(-90)
-                DropItem()
-                ev3.speaker.say("Your delivery is here")
-                Turn(120)
-                break
             #if line_color_sensor.color == searching_color:
                 #Turn(-90)
                 #DropItem()
@@ -185,36 +196,45 @@ def LineFollow():
     ev3.speaker.say("My deliveries are done.")
         
 def ManualControlEv3():
-    drop_held = False
-    while (Button.B not in controller.buttons.pressed):
-        pressed_buttons = controller.buttons.pressed
-        trigger_percentages = controller.triggers()
-        trigger_percentages[1]
-
-        # If right trigger pressed
-        if trigger_percentages[1] > 10:
-            accel = trigger_percentages[1]
-            dir = controller.joystick_left()[0]
-            move_motor_l.run(CONTROLLER_MOVE_SPEED * accel * (dir))
-            move_motor_r.run(CONTROLLER_MOVE_SPEED * accel * (-dir))
-        else:
-            move_motor_l.hold()
-            move_motor_r.hold()
-            
-        if Button.A in pressed_buttons and not drop_held:
-            DropItem()
-        
+#    drop_held = False
+#    while (Button.B not in controller.buttons.pressed):
+#        pressed_buttons = controller.buttons.pressed
+#        trigger_percentages = controller.triggers()
+#        trigger_percentages[1]
+#
+#        # If right trigger pressed
+#        if trigger_percentages[1] > 10:
+#            accel = trigger_percentages[1]
+#            dir = controller.joystick_left()[0]
+#            move_motor_l.run(CONTROLLER_MOVE_SPEED * accel * (dir))
+#            move_motor_r.run(CONTROLLER_MOVE_SPEED * accel * (-dir))
+#        else:
+#            move_motor_l.hold()
+#            move_motor_r.hold()
+#            
+#        if Button.A in pressed_buttons and not drop_held:
+#            DropItem()
+#        
         wait(15) # Wait 15ms between polling input
 
 
 
 ev3.speaker.set_volume(100)
-ev3.speaker.set_speech_options('en','f1',70,50)
+ev3.speaker.set_speech_options('en','f1',90,50)
+
+def ScanInStoredBricks():
+    while not (Button.CENTER in ev3.buttons.pressed()):
+        if (IsBlockColor(stack_color_sensor.color())):
+            stored_bricks.append(stack_color_sensor.color())
+            wait(1000)
+            while (stack_color_sensor.color() != Color.BLACK):
+                wait(100)
 
 while True:
-    print(ev3.buttons.pressed())
     if Button.LEFT in ev3.buttons.pressed():
         LineFollow()
     if Button.RIGHT in ev3.buttons.pressed():
         ManualControlEv3()
+    if Button.DOWN in ev3.buttons.pressed():
+        DropItem()
     wait(80)

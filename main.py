@@ -9,11 +9,7 @@ from pybricks.media.ev3dev import SoundFile, ImageFile
 from pybricks.iodevices import XboxController
 
 
-# This program requires LEGO EV3 MicroPython v2.0 or higher.
-# Click "Open user guide" on the EV3 extension tab for more information.
 
-
-# Create your objects here.
 ev3 = EV3Brick()
 
 # ----------------
@@ -49,7 +45,7 @@ LINE_FOLLOW_SPEED = 300
 LINE_COLOUR = Color.BLUE
 GROUND_COLOUR = Color.WHITE
 
-# Write your program here.
+# Beep to indicate the the project started
 ev3.speaker.beep()
 
 # Connect to xbox controller
@@ -60,6 +56,7 @@ def DropItem():
     drop_motor.run_until_stalled(500,Stop.COAST, 30)
     wait(100)
     drop_motor.run_angle(500,-180)
+
 
 def SortItems():
     while stack_color_sensor != Color.BLACK:
@@ -82,6 +79,7 @@ def SortItems():
 
         # Wait between loops to allow items to fall
         wait(500)
+
 
 def IsBlockColor(col : Color) -> bool:
     if (col == Color.RED):
@@ -110,14 +108,13 @@ def ColorToName(col : Color) -> str:
         return "Black"
     if col == Color.WHITE:
         return "White"
-
-    ev3.speaker.say(col.RED)
     return "An error"
 
 
 def Turn(angle : int):
     move_motor_l.run_angle(TURN_SPEED, angle)
     move_motor_r.run_angle(-TURN_SPEED, angle)
+
 
 def LineFollow():
     while IsBlockColor(stack_color_sensor.color):

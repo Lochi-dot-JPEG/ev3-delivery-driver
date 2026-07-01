@@ -35,18 +35,15 @@ stored_bricks = []
 # Speeds (in degrees/second)
 # Medium motors can go up to 1560 degrees/second
 # Large motors can go up to 1050 degrees/second
-DROP_SPEED = 500
-MOVE_SPEED = 400
-CONTROLLER_MOVE_SPEED = 200
-SORT_SPEED = 1000
-LAGGING_LINE_FOLLOW_SPEED = 100
-TURN_SPEED = 300
-LINE_FOLLOW_SPEED = 300
+DROP_SPEED = 1500
+TURN_SPEED = 200
+LAGGING_LINE_FOLLOW_SPEED = 60
+LINE_FOLLOW_SPEED = 100
 
 #BLACK = 29
 #WHITE = 69
 #LINE_THRESHOLD = (BLACK + WHITE) / 2
-LINE_THRESHOLD = 40
+LINE_THRESHOLD = 35
 
 # Define colors
 LINE_COLOUR = Color.BLACK
@@ -56,16 +53,13 @@ GROUND_COLOUR = Color.WHITE
 ev3.speaker.beep()
 #ev3.speaker.play_file
 
-# Connect to xbox controller
-#controller = XboxController()
-
 
 def DropItem():
-    drop_motor.run_angle(1500, 180)
-    drop_motor.run_angle(1500, -180)
+    drop_motor.run_angle(DROP_SPEED, 180)
+    drop_motor.run_angle(DROP_SPEED, -180)
 
 
-def IsBlockColor(col : Color) -> bool:
+def IsABlockColor(col : Color) -> bool:
     if (col == Color.RED):
         return True
     if (col == Color.GREEN):
@@ -74,6 +68,17 @@ def IsBlockColor(col : Color) -> bool:
         return True
     if (col == Color.BLUE):
         return True
+    return False 
+
+def HouseColorToName(col : Color) -> str:
+    if (col == Color.RED):
+        return "Koala"
+    if (col == Color.GREEN):
+        return "Bird"
+    if (col == Color.YELLOW):
+        return "Rabbit"
+    if (col == Color.BLUE):
+        return "Mr Mouse"
     return False 
 
 
@@ -101,32 +106,34 @@ def Turn(angle : int):
 
 
 def LineFollow():
-    while IsBlockColor(stack_color_sensor.color()):
+    while IsABlockColor(stack_color_sensor.color()):
         searching_color = stack_color_sensor.color()
         ev3.speaker.say("Delivery for the " + ColorToName(searching_color) + " house.")
-        #ev3.speaker.say(ColorToName(searching_color))
-        going_left = True
-        last_going = False
         loop_wait = 20
-        left_bias = 0
+        found_color = False
         while True:
             rgb = line_color_sensor.rgb()
             reflection = max(rgb)
-            #if (): # if the ground is bright go right
-                #left_bias = 25
-            #left_bias -= 1
 
-            if reflection < LINE_THRESHOLD:
-                move_motor_l.run(-LAGGING_LINE_FOLLOW_SPEED) # Right forward
+            if reflection < LINE_THRESHOLD: # On line
+                move_motor_l.run(-LAGGING_LINE_FOLLOW_SPEED)  # Turn more sharply
                 move_motor_r.run(LINE_FOLLOW_SPEED)
-            else:
-                move_motor_l.run(LINE_FOLLOW_SPEED) # Left forward
-                move_motor_r.run(LAGGING_LINE_FOLLOW_SPEED)
+            else: # Off the line
+                # This make it still turn with the line
+                move_motor_l.run(LAGGING_LINE_FOLLOW_SPEED) 
+                move_motor_r.run(LINE_FOLLOW_SPEED)
+                # This make it turn towards the line slightly
+                #move_motor_l.run(LINE_FOLLOW_SPEED) 
+                #move_motor_r.run(LAGGING_LINE_FOLLOW_SPEED)
+
             floor_colour = line_color_sensor.color()
+
             if floor_colour == searching_color:
+                found_color = True
+            elif found_color and floor_colour == Color.WHITE:
                 move_motor_l.stop()
                 move_motor_r.stop()
-                ev3.speaker.say("Your delivery is here")
+                ev3.speaker.say("Your delivery is here " + HouseColorToName(searching_color))
                 while floor_colour == searching_color:
                     DropItem()
                     wait(100)
@@ -134,47 +141,12 @@ def LineFollow():
                 break
             wait(loop_wait)
 
-        # Wait 200ms between deliveries to allow time for error
+        # Wait 200ms between deliveries to allow time for error in dropping items
         wait(200)
     ev3.speaker.say("My deliveries are done.")
         
-def ManualControlEv3():
-    pass # Could not get the controller to work
-#    drop_held = False
-#    while (Button.B not in controller.buttons.pressed):
-#        pressed_buttons = controller.buttons.pressed
-#        trigger_percentages = controller.triggers()
-#        trigger_percentages[1]
-#
-#        # If right trigger pressed
-#        if trigger_percentages[1] > 10:
-#            accel = trigger_percentages[1]
-#            dir = controller.joystick_left()[0]
-#            move_motor_l.run(CONTROLLER_MOVE_SPEED * accel * (dir))
-#            move_motor_r.run(CONTROLLER_MOVE_SPEED * accel * (-dir))
-#        else:
-#            move_motor_l.hold()
-#            move_motor_r.hold()
-#            
-#        if Button.A in pressed_buttons and not drop_held:
-#            DropItem()
-#        
-        #wait(15) # Wait 15ms between polling input
-
-
-
 ev3.speaker.set_volume(100)
 ev3.speaker.set_speech_options('en','f1',90,50)
-
-def ScanInStoredBricks():
-    while not (Button.CENTER in ev3.buttons.pressed()):
-        if (IsBlockColor(stack_color_sensor.color())):
-            stored_bricks.append(stack_color_sensor.color())
-            ev3.speaker.beep()
-            wait(1000)
-            while (stack_color_sensor.color() != Color.BLACK):
-                wait(100)
-
 
 def ScanReflection():
     while True:
@@ -184,14 +156,21 @@ def ScanReflection():
         if Button.UP in ev3.buttons.pressed():
             break
 
+def SayLine():
+    ev3.speaker.say("I am ready to deliver some packages.")
 
 while True:
-    if Button.LEFT in ev3.buttons.pressed():
+    pressedButtons = ev3.buttons.pressed()
+    if Button.LEFT in pressedButtons:
         LineFollow()
-    if Button.RIGHT in ev3.buttons.pressed():
-        ManualControlEv3()
-    if Button.DOWN in ev3.buttons.pressed():
+        continue
+    if Button.RIGHT in pressedButtons:
+        SayLine()
+        continue
+    if Button.DOWN in pressedButtons:
         DropItem()
-    if Button.UP in ev3.buttons.pressed():
+        continue
+    if Button.UP in pressedButtons:
         ScanReflection()
-    wait(80)
+        continue
+    wait(100)

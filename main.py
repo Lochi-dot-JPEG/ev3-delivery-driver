@@ -43,9 +43,10 @@ LAGGING_LINE_FOLLOW_SPEED = 100
 TURN_SPEED = 300
 LINE_FOLLOW_SPEED = 300
 
-BLACK = 9
-WHITE = 85
-LINE_THRESHOLD = (BLACK + WHITE) / 2
+#BLACK = 29
+#WHITE = 69
+#LINE_THRESHOLD = (BLACK + WHITE) / 2
+LINE_THRESHOLD = 40
 
 # Define colors
 LINE_COLOUR = Color.BLACK
@@ -53,6 +54,7 @@ GROUND_COLOUR = Color.WHITE
 
 # Beep to indicate the the project started
 ev3.speaker.beep()
+#ev3.speaker.play_file
 
 # Connect to xbox controller
 #controller = XboxController()
@@ -102,21 +104,28 @@ def LineFollow():
     while IsBlockColor(stack_color_sensor.color()):
         searching_color = stack_color_sensor.color()
         ev3.speaker.say("Delivery for the " + ColorToName(searching_color) + " house.")
-        ev3.speaker.say(ColorToName(searching_color))
+        #ev3.speaker.say(ColorToName(searching_color))
         going_left = True
         last_going = False
         loop_wait = 20
+        left_bias = 0
         while True:
-            reflection = line_color_sensor.reflection()
-            if (reflection > LINE_THRESHOLD): # if the ground is bright go right
-                move_motor_l.run_time(LINE_FOLLOW_SPEED,loop_wait) # Left forward
-                move_motor_r.run_time(LAGGING_LINE_FOLLOW_SPEED,loop_wait)
-            else:
-                move_motor_l.run_time(LAGGING_LINE_FOLLOW_SPEED, loop_wait) # Right forward
-                move_motor_r.run_time(LINE_FOLLOW_SPEED, loop_wait)
+            rgb = line_color_sensor.rgb()
+            reflection = max(rgb)
+            #if (): # if the ground is bright go right
+                #left_bias = 25
+            #left_bias -= 1
 
+            if reflection < LINE_THRESHOLD:
+                move_motor_l.run(-LAGGING_LINE_FOLLOW_SPEED) # Right forward
+                move_motor_r.run(LINE_FOLLOW_SPEED)
+            else:
+                move_motor_l.run(LINE_FOLLOW_SPEED) # Left forward
+                move_motor_r.run(LAGGING_LINE_FOLLOW_SPEED)
             floor_colour = line_color_sensor.color()
             if floor_colour == searching_color:
+                move_motor_l.stop()
+                move_motor_r.stop()
                 ev3.speaker.say("Your delivery is here")
                 while floor_colour == searching_color:
                     DropItem()
@@ -169,7 +178,8 @@ def ScanInStoredBricks():
 
 def ScanReflection():
     while True:
-        reflection = line_color_sensor.reflection()
+        rgb = line_color_sensor.rgb()
+        reflection = max(rgb)
         print(reflection)
         if Button.UP in ev3.buttons.pressed():
             break

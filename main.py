@@ -126,12 +126,10 @@ def PopFirstColor():
     return stored_bricks.pop(0)
 
 def LineFollow(dance = False):
-    while IsABlockColor(stack_color_sensor.color()):
-        searching_color = stack_color_sensor.color()
-        ev3.speaker.say("Delivery for " + HouseColorToName(searching_color))
+    while len(stored_bricks) > 0:
+        searching_color = stored_bricks[0]
+        ev3.speaker.say("I am going to " + HouseColorToName(searching_color))
         loop_wait = 20
-        found_color = False
-        last_found = None
         while True:
             rgb = line_color_sensor.rgb()
             reflection = max(rgb)
@@ -140,31 +138,33 @@ def LineFollow(dance = False):
                 move_motor_l.run(-LAGGING_LINE_FOLLOW_SPEED)  # Turn more sharply
                 move_motor_r.run(LINE_FOLLOW_SPEED)
             else: # Off the line
-                # This make it still turn with the line
-                move_motor_l.run(LAGGING_LINE_FOLLOW_SPEED) 
-                move_motor_r.run(LINE_FOLLOW_SPEED)
-                # This make it turn towards the line slightly
-                #move_motor_l.run(LINE_FOLLOW_SPEED) 
-                #move_motor_r.run(LAGGING_LINE_FOLLOW_SPEED)
+                move_motor_l.run(LINE_FOLLOW_SPEED) 
+                move_motor_r.run(LAGGING_LINE_FOLLOW_SPEED)
 
             floor_colour = line_color_sensor.color()
 
+            if collision_sensor.distance() < 100:
+                ev3.speaker.beep()
+                while collision_sensor.distance() < 115:
+                    wait(100)
+
             if floor_colour == searching_color:
-                #found_color = True
-                #last_found = searching_color
-            #elif found_color and floor_colour != Color.BLACK and floor_colour != searching_color:
                 move_motor_l.stop()
                 move_motor_r.stop()
-                ev3.speaker.say("I am at " + HouseColorToName(searching_color))
+                ev3.speaker.say("Delivery for " + HouseColorToName(searching_color))
                 Turn(-60)
                 while floor_colour == searching_color:
                     DropItem()
                     wait(200)
-                    if dance:
-                        Turn(-10)
-                        Turn(10)
-                        PlaySong()
-                    searching_color = stack_color_sensor.color() # Drop off multiple parcels if they are there
+                    stored_bricks.pop(0)
+                    if len(stored_bricks) == 0:
+                        searching_color = None
+                    else:
+                        searching_color = stored_bricks[0] # Drop off multiple parcels if they are there
+                if dance:
+                    Turn(-10)
+                    Turn(10)
+                    PlaySong()
                 Turn(55)
                 break
             wait(loop_wait)
@@ -178,7 +178,6 @@ def ReturnToPostOffice():
     moving = True
     since_found_red = 0
     red_found = False
-
     while moving:
         rgb = line_color_sensor.rgb()
         reflection = max(rgb)
@@ -186,21 +185,23 @@ def ReturnToPostOffice():
             move_motor_l.run(-LAGGING_LINE_FOLLOW_SPEED)  # Turn more sharply
             move_motor_r.run(LINE_FOLLOW_SPEED)
         else: # Off the line
-            move_motor_l.run(LAGGING_LINE_FOLLOW_SPEED) 
-            move_motor_r.run(LINE_FOLLOW_SPEED)
+            move_motor_l.run(LINE_FOLLOW_SPEED) 
+            move_motor_r.run(LAGGING_LINE_FOLLOW_SPEED)
         if red_found:
             since_found_red += 20
         elif line_color_sensor.color() == Color.RED:
             red_found = True
+        if since_found_red > 8000: # Continue moving for 8 seconds
+            moving = False
         wait(20)
-        if since_found_red > 2000: # 2000ms
-            return
+    move_motor_l.hold()
+    move_motor_r.hold()
     
 
 ev3.speaker.set_volume(100)
 ev3.speaker.set_speech_options('en','f3',120,70)
 
-def ScanReflection():
+def ScanReflection(): # For calibrating line following
     while True:
         rgb = line_color_sensor.rgb()
         reflection = max(rgb)
@@ -229,9 +230,6 @@ while True:
         continue
     if Button.RIGHT in pressedButtons:
         LineFollow(True)
-        continue
-    if Button.DOWN in pressedButtons:
-        DropItem()
         continue
     if Button.UP in pressedButtons:
         ScanItems()

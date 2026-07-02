@@ -50,7 +50,6 @@ LINE_COLOUR = Color.BLACK
 GROUND_COLOUR = Color.WHITE
 
 # Beep to indicate the the project started
-ev3.speaker.beep()
 #ev3.speaker.play_file
 
 # Define song playing
@@ -66,11 +65,15 @@ melody = [
 ]
 
 def PlaySong():
+    Turn(-20)
+    Turn(20)
     ev3.speaker.set_volume(50)
     for note, duration in melody:
         ev3.speaker.beep(frequency=note, duration=duration)
         wait(50) # Small pause between notes for clarity
     ev3.speaker.set_volume(100)
+    Turn(-20)
+    Turn(20)
 
 def DropItem():
     drop_motor.run_angle(DROP_SPEED, 180)
@@ -100,7 +103,7 @@ def HouseColorToName(col : Color) -> str:
     return False 
 
 
-def ColorToName(col : Color) -> str:
+def ColorToName(col : Color) -> str: # Used for debugging
     if col == Color.RED:
         return "Red"
     if col == Color.GREEN:
@@ -144,9 +147,9 @@ def LineFollow(dance = False):
             floor_colour = line_color_sensor.color()
 
             if collision_sensor.distance() < 100:
-                ev3.speaker.beep()
                 while collision_sensor.distance() < 115:
-                    wait(100)
+                    wait(500)
+                    ev3.speaker.beep(800,500)
 
             if floor_colour == searching_color:
                 move_motor_l.stop()
@@ -162,10 +165,8 @@ def LineFollow(dance = False):
                     else:
                         searching_color = stored_bricks[0] # Drop off multiple parcels if they are there
                 if dance:
-                    Turn(-10)
-                    Turn(10)
                     PlaySong()
-                Turn(55)
+                Turn(50)
                 break
             wait(loop_wait)
 
@@ -197,9 +198,8 @@ def ReturnToPostOffice():
     move_motor_l.hold()
     move_motor_r.hold()
     
+    
 
-ev3.speaker.set_volume(100)
-ev3.speaker.set_speech_options('en','f3',120,70)
 
 def ScanReflection(): # For calibrating line following
     while True:
@@ -209,8 +209,6 @@ def ScanReflection(): # For calibrating line following
         if Button.UP in ev3.buttons.pressed():
             break
 
-def SayLine():
-    ev3.speaker.say("I am ready to deliver some packages.")
 
 def ScanItems():
     while not Button.DOWN in ev3.buttons.pressed():
@@ -221,8 +219,12 @@ def ScanItems():
             wait(1000)
             ev3.speaker.beep(1000,50)
         wait(100)
+    ev3.speaker.beep(100,50)
             
-    
+ev3.speaker.beep()
+ev3.speaker.set_volume(100)
+ev3.speaker.set_speech_options('en','f3',120,70)
+
 while True:
     pressedButtons = ev3.buttons.pressed()
     if Button.LEFT in pressedButtons:

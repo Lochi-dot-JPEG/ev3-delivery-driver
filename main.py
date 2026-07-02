@@ -37,7 +37,7 @@ stored_bricks = []
 # Large motors can go up to 1050 degrees/second
 DROP_SPEED = 1500
 TURN_SPEED = 200
-LAGGING_LINE_FOLLOW_SPEED = 90
+LAGGING_LINE_FOLLOW_SPEED = 80
 LINE_FOLLOW_SPEED = 100
 
 #BLACK = 29
@@ -53,6 +53,24 @@ GROUND_COLOUR = Color.WHITE
 ev3.speaker.beep()
 #ev3.speaker.play_file
 
+# Define song playing
+# Define musical notes (frequencies in Hz)
+E4, D4, C4, G4 = 330, 294, 262, 392
+
+# Melody: (Note, Duration in ms)
+melody = [
+    (E4, 200), (D4, 200), (C4, 200), (D4, 200), 
+    (E4, 200), (E4, 200), (E4, 400),           
+    (D4, 200), (D4, 200), (E4, 200), (D4, 200), 
+    (C4, 400)                                  
+]
+
+def PlaySong():
+    ev3.speaker.set_volume(50)
+    for note, duration in melody:
+        ev3.speaker.beep(frequency=note, duration=duration)
+        wait(50) # Small pause between notes for clarity
+    ev3.speaker.set_volume(100)
 
 def DropItem():
     drop_motor.run_angle(DROP_SPEED, 180)
@@ -72,13 +90,13 @@ def IsABlockColor(col : Color) -> bool:
 
 def HouseColorToName(col : Color) -> str:
     if (col == Color.RED):
-        return "koala cottage"
+        return "the koala cottage"
     if (col == Color.GREEN):
-        return "bird nest"
+        return "the birds nest"
     if (col == Color.YELLOW):
-        return "piggy place"
+        return "panda place"
     if (col == Color.BLUE):
-        return "chintan mansion"
+        return "the shah mansion"
     return False 
 
 
@@ -101,11 +119,13 @@ def ColorToName(col : Color) -> str:
 
 
 def Turn(angle : int):
-    move_motor_l.run_angle(TURN_SPEED, angle*2)
+    move_motor_l.run_angle(TURN_SPEED, angle*2,Stop.HOLD, False)
     move_motor_r.run_angle(-TURN_SPEED, angle*2)
 
+def PopFirstColor():
+    return stored_bricks.pop(0)
 
-def LineFollow():
+def LineFollow(dance = False):
     while IsABlockColor(stack_color_sensor.color()):
         searching_color = stack_color_sensor.color()
         ev3.speaker.say("Delivery for " + HouseColorToName(searching_color))
@@ -135,20 +155,48 @@ def LineFollow():
             #elif found_color and floor_colour != Color.BLACK and floor_colour != searching_color:
                 move_motor_l.stop()
                 move_motor_r.stop()
-                ev3.speaker.say("I am at the " + HouseColorToName(searching_color))
-                Turn(-45)
-                while last_found == searching_color:
+                ev3.speaker.say("I am at " + HouseColorToName(searching_color))
+                Turn(-60)
+                while floor_colour == searching_color:
                     DropItem()
-                    wait(100)
+                    wait(200)
+                    if dance:
+                        Turn(-10)
+                        Turn(10)
+                        PlaySong()
                     searching_color = stack_color_sensor.color() # Drop off multiple parcels if they are there
-                Turn(40)
+                Turn(55)
                 break
             wait(loop_wait)
 
         # Wait 200ms between deliveries to allow time for error in dropping items
         wait(200)
     ev3.speaker.say("My deliveries are done.")
+    ReturnToPostOffice()
         
+def ReturnToPostOffice():
+    moving = True
+    since_found_red = 0
+    red_found = False
+
+    while moving:
+        rgb = line_color_sensor.rgb()
+        reflection = max(rgb)
+        if reflection < LINE_THRESHOLD: # On line
+            move_motor_l.run(-LAGGING_LINE_FOLLOW_SPEED)  # Turn more sharply
+            move_motor_r.run(LINE_FOLLOW_SPEED)
+        else: # Off the line
+            move_motor_l.run(LAGGING_LINE_FOLLOW_SPEED) 
+            move_motor_r.run(LINE_FOLLOW_SPEED)
+        if red_found:
+            since_found_red += 20
+        elif line_color_sensor.color() == Color.RED:
+            red_found = True
+        wait(20)
+        if since_found_red > 2000: # 2000ms
+            return
+    
+
 ev3.speaker.set_volume(100)
 ev3.speaker.set_speech_options('en','f3',120,70)
 
@@ -163,18 +211,29 @@ def ScanReflection():
 def SayLine():
     ev3.speaker.say("I am ready to deliver some packages.")
 
+def ScanItems():
+    while not Button.DOWN in ev3.buttons.pressed():
+        found_colour = stack_color_sensor.color()
+        if IsABlockColor(found_colour):
+            stored_bricks.append(found_colour)
+            ev3.speaker.beep()
+            wait(1000)
+            ev3.speaker.beep(1000,50)
+        wait(100)
+            
+    
 while True:
     pressedButtons = ev3.buttons.pressed()
     if Button.LEFT in pressedButtons:
         LineFollow()
         continue
     if Button.RIGHT in pressedButtons:
-        SayLine()
+        LineFollow(True)
         continue
     if Button.DOWN in pressedButtons:
         DropItem()
         continue
     if Button.UP in pressedButtons:
-        ScanReflection()
+        ScanItems()
         continue
     wait(100)
